@@ -28,9 +28,7 @@ namespace Notes.Application.Common.Behaviors
 
             Log.Information("Notes request: {Name} {@UserId} {@Request}", requestName, userId, request);
 
-            var response = await next();
-
-            return response;
+            return await next();
         }
     }
 }

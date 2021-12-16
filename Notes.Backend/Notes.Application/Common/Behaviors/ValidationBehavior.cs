@@ -16,25 +16,25 @@ namespace Notes.Application.Common.Behaviors
     {
         private readonly IEnumerable<IValidator<TRequest>> _validators;
 
-        public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
-        {
+        public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators) =>
             _validators = validators ?? throw new ArgumentNullException(nameof(validators));
-        }
 
-        public Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken, RequestHandlerDelegate<TResponse> next)
+        public async Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken, RequestHandlerDelegate<TResponse> next)
         {
-            var context = new ValidationContext<TRequest>(request);
-            var failures = _validators
-                .Select(validator => validator.Validate(context))
-                .SelectMany(result => result.Errors)
-                .Where(failures => failures != null)
-                .ToList();
-            if (failures.Any())
+            if (_validators.Any())
             {
-                throw new ValidationException(failures);
+                var context = new ValidationContext<TRequest>(request);
+                var validationResults = await Task.WhenAll(
+                    _validators.Select(v => v.ValidateAsync(context, cancellationToken)));
+                var failures = validationResults
+                    .SelectMany(result => result.Errors)
+                    .Where(failures => failures != null)
+                    .ToList();
+                if (failures.Any())
+                    throw new ValidationException(failures);
             }
 
-            return next();
+            return await next();
         }
     }
 }
